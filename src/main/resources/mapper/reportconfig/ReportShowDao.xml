@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.costreport.ReportShowMapper">
+    <!--初始化所有的组织信息-->
+    <select id="getAllOrganized" resultType="com.gpdi.operatingunit.entity.system.SysOrganization">
+         select * from sys_organization
+    </select>
+
+    <select id="sumAllItemsCost" resultType="String">
+         select sum(curr_month_value) from sys_cost_item where month=#{param1} and org_code=#{param2}
+    </select>
+
+    <resultMap id="cc" type="com.gpdi.operatingunit.entity.costreport.ReportShow">
+        <result column="id" javaType="Integer" jdbcType="INTEGER" property="id"></result>
+        <result column="name" javaType="String" jdbcType="VARCHAR" property="name"></result>
+        <result column="value" javaType="String" jdbcType="VARCHAR" property="value"></result>
+    </resultMap>
+    <!-- 查询成本明细-->
+    <select id="getAllCostItemsByOrganizedIdAndMonth" resultType="java.util.Map">
+         select a.name as name , b.curr_month_value as value,b.org_code as id from sys_cost_item a,rs_cost_report b where a.id=b.cost_item_id and b.month= #{month} and b.org_code= #{organizedId} ;
+     </select>
+    <!-- 导入坏账-->
+    <insert id="add" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into badecost (id,month, district, service_center, type, value) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            null,
+            #{item.month},
+            #{item.district},
+            #{item.serviceCenter},
+            #{item.type},
+            #{item.value}
+            )
+        </foreach>
+    </insert>
+
+
+    <!--查询坏账金额-->
+    <select id="getBadCodeFromMonthAndOrganized" resultType="String">
+       select a.value from  badcost as a,sys_organization as b where a.type="坏账费用" and a.service_center=b.alias and b.code=#{organized} and a.month=#{month} limit 1;
+    </select>
+
+
+    <!--查询当月收入-->
+    <select id="getMonthIncomeByMonthAndServiceName" resultType="String">
+      select value from month_income where month=#{month} and service_center=#{serviceName} limit 1
+    </select>
+
+
+    <!-- 根据组织id,查询组织名称（营服中心名称）-->
+    <select id="getOrganizedServiceName" resultType="String" parameterType="Integer">
+          select alias from sys_organization where code=#{0};
+    </select>
+
+
+    <!--根据月份和营服名称查询成本信息（总费用，月度累计消费费用）-->
+    <select id="getCostIndexByMonthAndCenterService" resultType="Integer">
+      select * from cost_index where month=#{param1} and service_center=#{param2}
+    </select>
+
+
+    <!--: 根据具体月份查询所有的成本报表-->
+    <select id="getCostIndexBySQL" resultType="com.gpdi.operatingunit.entity.costreport.CostIndex"
+            parameterType="String">
+        ${value}
+    </select>
+
+
+    <!--* 根据code查询组织名称-->
+    <select id="getOranziedByCode" resultType="String" parameterType="String">
+        select name from sys_organization where code=#{0};
+    </select>
+
+
+    <!--批量插入坏账数据-->
+    <insert id="addBadCostlList" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into badcost(id, month, district, service_center, type, value) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (null,#{item.month}, #{item.district}, #{item.serviceCenter}, #{item.type}, #{item.value})
+        </foreach>
+    </insert>
+
+
+    <!--//批量插入月度成本数据-->
+    <insert id="addCostIndexlList" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into cost_index(id, company, dept, month, yearly_budget, budget_implementation_rate,time_schedule,
+        progress_is_poor, value) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (null,#{item.company},#{item.dept},#{item.month}, #{item.yearlyBudget},
+            #{item.budgetImplementationRate},#{item.timeSchedule},#{item.progressIsPoor},
+            #{item.value})
+        </foreach>
+    </insert>
+
+    <!--//批量插入成本收入数据-->
+    <insert id="addCostIncomeList" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into month_income( id, month, company, unit, district, service_center, value) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (null,
+            #{item.month},
+            #{item.company},
+            #{item.unit},
+            #{item.district},
+            #{item.serviceCenter},
+            #{item.value})
+        </foreach>
+    </insert>
+
+
+    <!--根据组织编号查询所属组织级别-->
+    <select id="getOrgCodeLevelByOrgCode" parameterType="String" resultType="Integer">
+       select level from sys_organization where code=#{code}
+    </select>
+
+    <!--//查询对应的角色信息-->
+    <select id="getRoleByUserId" resultType="com.gpdi.operatingunit.entity.system.SysRole" parameterType="Integer">
+        select
+                  b.*
+        from sys_user a, sys_role b ,rel_user_role c
+        where
+             a.id=c.user_id and
+             b.id=c.role_id and
+             b.name like '%市管理员%' and
+             a.id=#{id}
+    </select>
+
+
+    <!--根据顶级组织编号查询所有的本市的结构信息-->
+    <select id="getAllSysOrganizedByTopOrgCode" parameterType="Long" resultType="com.gpdi.operatingunit.entity.system.SysOrganization">
+        select * from sys_organization where top_org_code=#{0}
+     </select>
+</mapper>

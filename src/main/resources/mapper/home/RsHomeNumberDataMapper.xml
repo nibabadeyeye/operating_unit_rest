@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.home.RsHomeNumberDataDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.home.RsHomeNumberData" id="rsHomeNumberDataMap">
+        <result property="id" column="id"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="parentCode" column="parent_code"/>
+        <result property="fullOrgCode" column="full_org_code"/>
+        <result property="parentOrgName" column="parent_org_name"/>
+        <result property="orgName" column="org_name"/>
+        <result property="month" column="month"/>
+        <result property="incomeValue" column="income_value"/>
+        <result property="incomeBudget" column="income_budget"/>
+        <result property="incomeProgress" column="income_progress"/>
+        <result property="costValue" column="cost_value"/>
+        <result property="costBudget" column="cost_budget"/>
+        <result property="costProgress" column="cost_progress"/>
+        <result property="profits" column="profits"/>
+        <result property="profitsProgress" column="profits_progress"/>
+    </resultMap>
+
+    <select id="getNumberDataByMonth" resultMap="rsHomeNumberDataMap">
+        select `month`,
+        FORMAT(income_value,2) as income_value,
+        FORMAT(income_budget,2) as income_budget,
+        FORMAT(income_progress*100,2) as income_progress,
+        FORMAT(cost_value,2) as cost_value,
+        FORMAT(cost_budget,2) as cost_budget,
+        FORMAT(cost_progress*100,2) as cost_progress,
+        FORMAT(profits,2) as profits,
+        FORMAT(profits_progress*100,2) as profits_progress
+        from rs_home_number_data
+        where top_org_code = #{topOrgCode}
+        and org_code = #{orgCode} and `month` = #{month}
+    </select>
+
+    <select id="getMonths" resultType="java.lang.Integer">
+        select DISTINCT `month` from rs_home_number_data where top_org_code = #{topOrgCode} order by `month` desc
+    </select>
+
+</mapper>

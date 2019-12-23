@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.relation.RelReportColumnValueMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.relation.RelReportColumnValue" id="relReportColumnValueMap">
+        <result property="id" column="id"/>
+        <result property="reportId" column="report_id"/>
+        <result property="month" column="month"/>
+        <result property="topOrgCode" column="top_org_code" />
+        <result property="districtCode" column="district_code"/>
+        <result property="centerCode" column="center_code"/>
+        <result property="prop" column="prop"/>
+        <result property="value" column="value"/>
+        <result property="changed" column="changed"/>
+        <result property="finalValue" column="final_value"/>
+        <result property="remark" column="remark"/>
+        <result property="type" column="type"/>
+    </resultMap>
+
+    <select id="selectMonth" resultMap="relReportColumnValueMap">
+        select DISTINCT month,month as value from rel_report_column_value
+        where report_id = #{reportId} and top_org_code = #{topOrgCode} order by month desc
+    </select>
+
+    <!-- 获取渠道效益报表数聚 -->
+    <select id="getBenefitsList" resultMap="relReportColumnValueMap">
+        select a.month , a.report_id , a.district_code , a.center_code ,b.alias AS district,c.alias as ServiceCenter , a.prop ,
+        IFNULL(a.final_value,a.value) as final_value,a.value as value,a.type
+        from rel_report_column_value a
+        left join sys_organization b on a.district_code = b.code
+        left join sys_organization c on a.center_code = c.code
+        where b.alias != '佛山分公司'
+        <if test="district != null and district != ''">
+            and a.district_code =  #{district}
+        </if>
+        <if test="center != null and center != ''">
+            and a.center_code =  #{center}
+        </if>
+        and a.report_id = #{reportId}
+        and a.month = #{month} and a.top_org_code = #{topOrgCode}
+        group by a.district_code,a.center_code,a.prop
+    </select>
+
+    <!-- 获取成本对标报表数据 -->
+    <select id="getCostList" resultMap="relReportColumnValueMap">
+        select a.month , a.report_id , a.district_code , a.center_code ,b.alias AS district,c.alias as ServiceCenter , a.prop ,
+        IFNULL(a.final_value,a.value) as final_value,a.value as value,a.type
+        from rel_report_column_value a
+        left join sys_organization b on a.district_code = b.code
+        left join sys_organization c on a.center_code = c.code
+        join sys_report_column d on a.prop = d.prop
+        where b.alias != '佛山分公司'
+        <if test="district != null and district != ''">
+            and a.district_code =  #{district}
+        </if>
+        <if test="center != null and center != ''">
+            and a.center_code =  #{center}
+        </if>
+        and a.report_id = #{reportId}
+        and a.month = #{month} and  a.top_org_code = #{topOrgCode}
+        group by a.district_code,a.center_code,a.prop
+    </select>
+
+    <!-- 判断该月份数据是否存在 -->
+    <select id="getIfExist" resultType="java.lang.Integer">
+        select max(month) from rel_report_column_value where report_id = #{reportId} and month = #{month} and top_org_code = #{topOrgCode};
+    </select>
+
+
+    <!-- 获取业务量展示报表最新月份数据 -->
+    <select id="developMaxMonth" resultType="int">
+        select max(month) from business_development
+    </select>
+
+    <!-- 获取业务量展示报表市层级数据 -->
+    <select id="queryDevelopCityCenterList" resultType="java.util.Map">
+        select s.alias as serviceCenter,b.*  from (
+        select month,serviceCenter,sum(mobileLast) mobileLast,sum(mobile) mobile,ROUND((sum(mobile)-sum(mobileLast))/sum(mobileLast),2) mobileRate,
+        sum(broadbandLast) broadbandLast,sum(broadband) broadband,ROUND((sum(broadband)-sum(broadbandLast))/sum(broadbandLast),2) broadbandRate,
+        sum(itvLast) itvLast,sum(itv) itv,ROUND((sum(itv)-sum(itvLast))/sum(itvLast),2) itvRate,
+        sum(mobileUserLast) mobileUserLast,sum(mobileUser) mobileUser,ROUND((sum(mobileUser)-sum(mobileUserLast))/sum(mobileUserLast),2) mobileUserRate,
+        sum(broadbandUserLast) broadbandUserLast,sum(broadbandUser) broadbandUser,ROUND((sum(broadbandUser)-sum(broadbandUserLast))/sum(broadbandUserLast),2) broadbandUserRate,
+        code, parentCode,topOrgCode from business_development
+        where topOrgCode = #{topOrgCode}  and `month` = #{month} group by parentCode) b left join sys_organization s on b.parentCode = s.code
+    </select>
+
+    <!-- 获取业务量展示报表市级对应区对应营服数据 -->
+    <select id="innerToDevelopCityCenterList" resultType="java.util.Map">
+        select * from  business_development where month = #{month} and topOrgCode = #{topOrgCode}
+    </select>
+
+    <!-- 获取业务量展示报表区层级数据 -->
+    <select id="queryDevelopDistrictCenterList" resultType="java.util.Map">
+        select s.alias as serviceCenter,b.*  from (
+        select month,serviceCenter,sum(mobileLast) mobileLast,sum(mobile) mobile,(sum(mobile)-sum(mobileLast))/sum(mobileLast) mobileRate,
+        sum(broadbandLast) broadbandLast,sum(broadband) broadband,(sum(broadband)-sum(broadbandLast))/sum(broadbandLast) broadbandRate,
+        sum(itvLast) itvLast,sum(itv) itv,(sum(itv)-sum(itvLast))/sum(itvLast) itvRate,
+        sum(mobileUserLast) mobileUserLast,sum(mobileUser) mobileUser,(sum(mobileUser)-sum(mobileUserLast))/sum(mobileUserLast) mobileUserRate,
+        sum(broadbandUserLast) broadbandUserLast,sum(broadbandUser) broadbandUser,(sum(broadbandUser)-sum(broadbandUserLast))/sum(broadbandUserLast) broadbandUserRate,
+        code, parentCode,topOrgCode from business_development
+        where topOrgCode = #{topOrgCode} and parentCode =#{orgCode}  and `month` = #{month} group by parentCode) b left join sys_organization s on b.parentCode = s.code
+    </select>
+
+    <!-- 获取业务量展示报表区对应营服数据 -->
+    <select id="innerToDevelopDistrictCenterList" resultType="java.util.Map">
+        select * from  business_development where month = #{month} and topOrgCode = #{topOrgCode} and parentCode = #{orgCode}
+    </select>
+
+    <!-- 获取业务量展示报表营服及以下层级数据 -->
+    <select id="queryDevelopServiceCenterList" resultType="java.util.Map">
+        select * from  business_development where month = #{month} and topOrgCode = #{topOrgCode} and code = #{orgCode}
+    </select>
+
+    <!-- 获取收入展示报表最新月份数据 -->
+    <select id="incomeMaxMonth" resultType="int">
+        select max(month) from business_income
+    </select>
+
+    <!-- 获取收入展示报表市层级数据 -->
+    <select id="queryIncomeCityCenterList" resultType="java.util.Map">
+        select `month`,district,serviceCenter,(round(sum(lastValue)/10000,2)) lastValue,round(sum(currentValue)/10000,2) currentValue,
+        (round((sum(currentValue)-sum(lastValue))/sum(lastValue)*100,2)) growthValue,orgCode,parentCode,topOrgCode,
+        (round(sum(incomeBudget)/10000,2)) incomeBudget,(round(sum(currentValue)/sum(incomeBudget)*100,2)) incomeProgress,
+        round(sum(oweCurrentValue)/10000) oweCurrentValue,
+        (round(sum(oweCurrentValue)/sum(currentValue)*100,2)) oweValue  from business_income
+        where month = #{month} and topOrgCode = #{topOrgCode} group by parentCode
+    </select>
+
+    <!-- 获取收入展示报表市级对应区对应营服数据 -->
+    <select id="innerToIncomeCityCenterList" resultType="java.util.Map">
+        select month,district,serviceCenter,round(lastValue/10000,2) lastValue,round(currentValue/10000,2) currentValue,
+        round(growthValue*100,2) growthValue,orgCode,parentCode,topOrgCode,round(incomeBudget/10000,2) incomeBudget,
+        round(incomeProgress*100,2) incomeProgress,round(oweCurrentValue/10000,2) oweCurrentValue,
+        round(oweValue*100,2) oweValue from  business_income where month = #{month} and topOrgCode = #{topOrgCode}
+    </select>
+
+    <!-- 获取收入展示报表区层级数据 -->
+    <select id="queryIncomeDistrictCenterList" resultType="java.util.Map">
+       select `month`,district,serviceCenter,(round(sum(lastValue)/10000,2)) lastValue,round(sum(currentValue)/10000,2) currentValue,
+        (round((sum(currentValue)-sum(lastValue))/sum(lastValue)*100,2)) growthValue,orgCode,parentCode,topOrgCode,
+        (round(sum(incomeBudget)/10000,2)) incomeBudget,(round(sum(currentValue)/sum(incomeBudget)*100,2)) incomeProgress,
+        round(sum(oweCurrentValue)/10000) oweCurrentValue,
+        (round(sum(oweCurrentValue)/sum(currentValue)*100,2)) oweValue  from business_income
+        where month = #{month} and topOrgCode = #{topOrgCode} and parentCode = #{orgCode}  group by parentCode
+    </select>
+
+    <!-- 获取收入展示报表区对应营服数据 -->
+    <select id="innerToIncomeDistrictCenterList" resultType="java.util.Map">
+        select month,district,serviceCenter,round(lastValue/10000,2) lastValue,round(currentValue/10000,2) currentValue,
+        round(growthValue*100,2) growthValue,orgCode,parentCode,topOrgCode,round(incomeBudget/10000,2) incomeBudget,
+        round(incomeProgress*100,2) incomeProgress,round(oweCurrentValue/10000,2) oweCurrentValue,
+        round(oweValue*100,2) oweValue from  business_income where month = #{month} and topOrgCode = #{topOrgCode} and parentCode = #{orgCode}
+    </select>
+
+    <!-- 获取收入展示报表营服及以下层级数据 -->
+    <select id="queryIncomeServiceCenterList" resultType="java.util.Map">
+        select month,district,serviceCenter,round(lastValue/10000,2) lastValue,round(currentValue/10000,2) currentValue,
+        round(growthValue*100,2) growthValue,orgCode,parentCode,topOrgCode,round(incomeBudget/10000,2) incomeBudget,
+        round(incomeProgress*100,2) incomeProgress,round(oweCurrentValue/10000,2) oweCurrentValue,
+        round(oweValue*100,2) oweValue from  business_income where month = #{month} and topOrgCode = #{topOrgCode} and parentCode = #{orgCode}
+    </select>
+
+</mapper>

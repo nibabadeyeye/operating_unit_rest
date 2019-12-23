@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gpdi.operatingunit.dao.originaltabledisplay.ExcelMapper">
+
+    <!--查询表头信息-->
+   <select id="getExcelHeadData" parameterType="Integer"  resultType="com.gpdi.operatingunit.entity.originaltabledisplay.ExcelData">
+        select * from excel_data where isHead=1 and excelId=#{0}
+   </select>
+
+    <!--查询表格标体信息-->
+    <select id="getExcelBodyData" parameterType="Integer"  resultType="com.gpdi.operatingunit.entity.originaltabledisplay.ExcelData">
+        select * from excel_data where isHead=2 and excelId=#{0}
+   </select>
+
+    <!--删除表格数据为空的记录-->
+    <delete id="deleteTableRecordWhichCoreDataIsNull">
+--         delete from excel_data where coreData  is null or  length(coreData)=0;
+            delete from excel_data where  length(coreData)=0;
+    </delete>
+
+    <!--多条件查询Excel报表信息(月份、营服)-->
+    <select id="getAListOfExcelMessage" parameterType="String"  resultType="com.gpdi.operatingunit.entity.originaltabledisplay.ExcelMessage">
+       ${value }
+   </select>
+
+    <!--插入一条ExcelMessage饰信息-->
+    <insert id="addExcelMessage" parameterType="com.gpdi.operatingunit.entity.originaltabledisplay.ExcelMessage">
+        insert into excel_message value(null,#{name},#{month},#{serviceName},#{username},#{uuid},#{code},#{orgCode})
+    </insert>
+
+    <!--批量插入数据-->
+    <insert id="addExcelList" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into excel_data (id,excelId, coreData, crossColumn, crossRow, rowNumber, columnNumber,isHead,height,width) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            null,
+            #{ item.excelId},
+            #{item.coreData},
+            #{item.crossColumn},
+            #{item.crossRow},
+            #{item.rowNumber},
+            #{item.columnNumber},
+            #{item.isHead},
+            #{item.height},
+            #{item.width}
+            )
+        </foreach>
+    </insert>
+
+    <!--通过UUID查询ExcelID-->
+    <select id="getExcelIdByUUID" parameterType="String" resultType="Integer">
+        select id from excel_message where uuid=#{0}
+    </select>
+
+    <!--获取Excel信息-->
+    <select id="getExcelData" parameterType="Integer"  resultType="com.gpdi.operatingunit.entity.originaltabledisplay.ExcelData">
+        select * from excel_data where   excelId=#{0} order by id desc;
+   </select>
+
+    <!--获取分页的记录数-->
+    <select id="getExcelNumber" parameterType="String" resultType="Integer">
+        ${value}
+    </select>
+   <delete id="delExcelData" parameterType="com.gpdi.operatingunit.controller.originaltabledisplay.DeletePara">
+       delete from excel_data where excelId=#{excelId} and rowNumber=#{rowNumber} and columnNumber=#{columnNumber}
+   </delete>
+</mapper>

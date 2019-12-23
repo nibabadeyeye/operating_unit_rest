@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.SimpleProfitColumMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SimpleProfitColumEntity" id="tSimpleProfitColumMap">
+        <result property="id" column="id"/>
+        <result property="prop" column="prop"/>
+        <result property="name" column="name"/>
+        <result property="seq" column="seq"/>
+        <result property="childId" column="child_id"/>
+        <result property="level" column="level"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <!-- 表头 -->
+    <select id="findAll" resultMap="tSimpleProfitColumMap">
+        SELECT * FROM t_simple_profit_colum t1 ORDER BY seq
+    </select>
+
+
+</mapper>

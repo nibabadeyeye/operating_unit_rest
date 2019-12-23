@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysCostCenterMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysCostCenter" id="sysCostCenterMap">
+        <result property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="scope" column="scope"/>
+        <result property="company" column="company"/>
+        <result property="cctc" column="cctc"/>
+        <result property="head" column="head"/>
+        <result property="responsibleUser" column="responsible_user"/>
+        <result property="intro" column="intro"/>
+        <result property="language" column="language"/>
+        <result property="fromDate" column="from_date"/>
+        <result property="toDate" column="to_date"/>
+        <result property="belongDistrict" column="belong_district"/>
+        <result property="belongCenter" column="belong_center"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="saveCostCenter" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.gpdi.operatingunit.entity.system.SysCostCenter">
+        INSERT INTO sys_cost_center(code, scope, company, cctc, head, responsible_user,
+        intro, `language`, from_date, to_date, belong_district, belong_center,
+        top_org_code, org_code, enable, create_oper_id, create_time)
+        VALUES (#{code}, #{scope}, #{company}, #{cctc}, #{head}, #{responsibleUser},
+        #{intro}, #{language}, #{fromDate}, #{toDate}, #{belongDistrict}, #{belongCenter},
+        #{topOrgCode}, #{orgCode}, #{enable}, #{createOperId}, #{createTime})
+    </insert>
+
+</mapper>

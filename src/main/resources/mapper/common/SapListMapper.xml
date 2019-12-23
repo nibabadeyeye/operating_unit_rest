@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.SapListMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.common.SapList" id="sapList">
+        <result property="columnName" column="COLUMN_NAME"/>
+        <result property="comment" column="COLUMN_COMMENT"/>
+    </resultMap>
+
+    <select id="getSapNameList" resultMap="sapList">
+        select COLUMN_NAME,COLUMN_COMMENT
+        from information_schema.`COLUMNS` 
+        where table_name='data_sap_list' and table_schema='operating_unit';
+    </select>
+
+</mapper>

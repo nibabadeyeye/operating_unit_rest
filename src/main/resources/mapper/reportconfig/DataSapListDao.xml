@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.DataSapListMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.DataSapListEntity" id="dataSapListMap">
+        <result property="id" column="id"/>
+        <result property="year" column="year"/>
+        <result property="per" column="per"/>
+        <result property="company" column="company"/>
+        <result property="credentialsNo" column="credentials_no"/>
+        <result property="credentialsTpye" column="credentials_tpye"/>
+        <result property="credentialsDate" column="credentials_date"/>
+        <result property="pk" column="pk"/>
+        <result property="currencyValue" column="currency_value"/>
+        <result property="currency" column="currency"/>
+        <result property="profitCenter" column="profit_center"/>
+        <result property="profitCenterDesc" column="profit_center_desc"/>
+        <result property="text" column="text"/>
+        <result property="costCenter" column="cost_center"/>
+        <result property="costCenterDesc" column="cost_center_desc"/>
+        <result property="subject" column="subject"/>
+        <result property="yearMonth" column="year_month"/>
+        <result property="costElement" column="cost_element"/>
+        <result property="costElementDesc" column="cost_element_desc"/>
+        <result property="zhuangyi" column="zhuangyi"/>
+        <result property="scope" column="scope"/>
+        <result property="usage" column="usage"/>
+        <result property="economicConsiderations" column="economic_considerations"/>
+        <result property="supplier" column="supplier"/>
+        <result property="contractNo" column="contract_no"/>
+        <result property="operator" column="operator"/>
+        <result property="serialNum" column="serial_num"/>
+        <result property="custom1" column="custom1"/>
+        <result property="custom2" column="custom2"/>
+        <result property="custom3" column="custom3"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="centerId" column="center_id"/>
+        <result property="month" column="month"/>
+        <result property="costItem" column="cost_item"/>
+    </resultMap>
+
+    <insert id="addDataSapList">
+        INSERT INTO `data_sap_list`(
+        `year`, `per`, `company`, `credentials_no`, `credentials_tpye`,
+        `credentials_date`, `pk`, `currency_value`, `currency`, `profit_center`,
+         `profit_center_desc`, `text`, `cost_center`, `cost_center_desc`, `subject`,
+          `year_month`, `cost_element`, `cost_element_desc`, `zhuangyi`, `scope`, `usage`,
+          `economic_considerations`, `supplier`, `contract_no`, `operator`, `serial_num`,
+          `custom1`, `custom2`, `custom3`, `org_code`, `center_id`, `month`, `cost_item`)
+        VALUES
+        <foreach collection="list" item="emp" separator=",">
+            (
+            #{emp.year},
+            #{emp.per},
+            #{emp.company},
+            #{emp.credentialsNo},
+            #{emp.credentialsTpye},
+            #{emp.credentialsDate},
+            #{emp.pk},
+            #{emp.currencyValue},
+            #{emp.currency},
+            #{emp.profitCenter},
+            #{emp.profitCenterDesc},
+            #{emp.text},
+            #{emp.costCenter},
+            #{emp.costCenterDesc},
+            #{emp.subject},
+            #{emp.yearMonth},
+            #{emp.costElement},
+            #{emp.costElementDesc},
+            #{emp.zhuangyi},
+            #{emp.scope},
+            #{emp.usage},
+            #{emp.economicConsiderations},
+            #{emp.supplier},
+            #{emp.contractNo},
+            #{emp.operator},
+            #{emp.serialNum},
+            #{emp.custom1},
+            #{emp.custom2},
+            #{emp.custom3},
+            #{emp.orgCode},
+            #{emp.centerId},
+            #{emp.month},
+            #{emp.costItem}
+            )
+        </foreach>
+    </insert>
+
+    <select id="getUserOrgCode" resultType="Long">
+        SELECT org_code FROM `rel_user_organization` WHERE user_id = #{id}
+    </select>
+
+    <!-- 获取没有条件的营服级的sap -->
+    <select id="getSapList1" resultMap="dataSapListMap">
+        select x.*
+        from data_sap_list x
+        join (
+            select a.sap_code
+            from rel_sap_cost_item a
+            left join rel_sap_cost_item_subitem b on a.id = b.parent_id
+            where a.cost_item_id = #{itemId} and a.org_code = #{topOrgCode}
+            and a.report_id = #{reportId} and a.enable = 1 and a.year = #{endYear}
+            and b.parent_id is null
+        ) y on x.cost_element = y.sap_code
+        join sys_cost_center z on x. cost_center = z.code
+        where z.org_code = #{orgCode}
+        <if test="startYear != null and startYear != ''">
+            and x.year <![CDATA[ >= ]]>  #{startYear}
+        </if>
+        <if test="endYear != null and endYear != ''">
+            and x.year <![CDATA[ <= ]]>  #{endYear}
+        </if>
+        <if test="startPer != null and startPer != ''">
+            and x.per <![CDATA[ >= ]]> #{startPer}
+        </if>
+        <if test="endPer != null and endPer != ''">
+            and x.per <![CDATA[ <= ]]> #{endPer}
+        </if>
+    </select>
+
+    <!-- 获取没有条件的区的sap -->
+    <select id="getSapList2" resultMap="dataSapListMap">
+        select a.*
+        from data_sap_list a
+        join sys_cost_center z on a. cost_center = z.code
+        where z.code = #{orgCode} and ${param}
+        <if test="startYear != null and startYear != ''">
+            and a.year <![CDATA[ >= ]]> #{startYear}
+        </if>
+        <if test="endYear != null and endYear != ''">
+            and a.year <![CDATA[ <= ]]> #{endYear}
+        </if>
+        <if test="startPer != null and startPer != ''">
+            and a.per <![CDATA[ >= ]]> #{startPer}
+        </if>
+        <if test="endPer != null and endPer != ''">
+            and a.per <![CDATA[ <= ]]> #{endPer}
+        </if>
+    </select>
+
+    <!-- 获取有特殊条件的营服的sap -->
+    <select id="getSapList3" resultMap="dataSapListMap">
+        select x.*
+        from data_sap_list x
+        join (
+            select a.sap_code
+            from rel_sap_cost_item a
+            left join rel_sap_cost_item_subitem b on a.id = b.parent_id
+            where a.cost_item_id = #{itemId} and a.org_code = #{topOrgCode}
+            and a.report_id = #{reportId} and a.enable = 1 and a.year = #{endYear}
+            and b.parent_id is null
+        ) y on x.cost_element = y.sap_code
+        join sys_cost_center z on x. cost_center = z.code
+        join sys_organization o on z.org_code = o.code
+        where o.parent_code = #{orgCode}
+        <if test=" startYear != null and startYear != ''">
+            and x.year <![CDATA[ >= ]]>  #{startYear}
+        </if>
+        <if test="endYear != null and endYear != ''">
+            and x.year <![CDATA[ <= ]]> #{endYear}
+        </if>
+        <if test="startPer != null and startPer != ''">
+            and x.per <![CDATA[ >= ]]> #{startPer}
+        </if>
+        <if test="endPer != null and endPer != ''">
+            and x.per <![CDATA[ <= ]]> #{endPer}
+        </if>
+    </select>
+
+    <!-- 获取有特殊条件的区的sap -->
+    <select id="getSapList4" resultMap="dataSapListMap">
+        select a.*
+        from data_sap_list a
+        join sys_cost_center z on a. cost_center = z.code
+        join sys_organization o on z.org_code = o.code
+        where o.parent_code = #{orgCode} and ${param}
+        <if test="startYear != null and startYear != ''">
+            and a.year <![CDATA[ >= ]]> #{startYear}
+        </if>
+        <if test="endYear != null and endYear != ''">
+            and a.year <![CDATA[ <= ]]> #{endYear}
+        </if>
+        <if test="startPer != null and startPer != ''">
+            and a.per <![CDATA[ >= ]]> #{startPer}
+        </if>
+        <if test="endPer != null and endPer != ''">
+            and a.per <![CDATA[ <= ]]> #{endPer}
+        </if>
+    </select>
+
+</mapper>

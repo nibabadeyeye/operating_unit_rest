@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gpdi.operatingunit.dao.business.IncomeMapper">
+
+
+    <!--获取收入展示报表月份倒序集合-->
+    <select id="monthList" resultType="java.lang.Integer">
+        select `month` from business_income group by month order by month desc
+    </select>
+
+</mapper>

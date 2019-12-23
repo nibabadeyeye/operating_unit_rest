@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.RelSapCostItemSubitemMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.RelSapCostItemSubitem" id="relSapCostItemSubitemMap">
+        <result property="id" column="id"/>
+        <result property="parentId" column="parent_id" />
+        <result property="orgCode" column="org_code" />
+        <result property="year" column="year"/>
+        <result property="reportId" column="report_id"/>
+        <result property="sapCode" column="sapCode"/>
+        <result property="fieldName" column="field_name"/>
+        <result property="fieldNameDesc" column="field_name_desc"/>
+        <result property="operation" column="operation"/>
+        <result property="operationDesc" column="operation_desc"/>
+        <result property="params" column="params"/>
+    </resultMap>
+
+    <select id="getRelSapCostItemSubmitemList" resultMap="relSapCostItemSubitemMap">
+        select * from rel_sap_cost_item_subitem where parent_id = #{id};
+    </select>
+
+    <delete id="deleteSubitemByParentId">
+        delete from rel_sap_cost_item_subitem where parent_id = #{sid}
+    </delete>
+
+    <select id="getIdsByItemId" resultType="java.lang.Integer">
+        select id from rel_sap_cost_item_subitem where parent_id in
+        <foreach item="item" index="index" collection="list" open=" (" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper>

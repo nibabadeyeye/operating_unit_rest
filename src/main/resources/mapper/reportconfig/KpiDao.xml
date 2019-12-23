@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.costreport.KpiMapper">
+
+    <!--批量插入kpi数据-->
+    <insert id="batchInsetKpiData" parameterType="java.util.List" useGeneratedKeys="false">
+        insert into badecost (
+        id,district, service_name, income_indicators, year,
+        rate_increase,stock_labor_cost, stock_cost_deducted, add_cost, labor_base_cost_after_claim,
+        cumulative_implementation, cumulative_distribution, distribution_progress,
+        max_distribution_progress,space_amount,
+        settlement_amount, ceo_amount, stock _cost_payable, increased_costs, incremental_award,
+        maintenance_performance_award,total_pay) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (null,
+            #{item.id},
+            #{item.district},
+            #{item.serviceName},
+            #{item.incomeIndicators},
+            #{item.year},
+            #{item.rateIncrease},
+            #{item.stockLaborCost},
+            #{item.stockCostDeducted},
+            #{item.addCost},
+            #{item.laborBaseCostAfterClaim},
+            #{item.cumulativeImplementation},
+            #{item.cumulativeDistribution},
+            #{item.distributionProgress},
+            #{item.maxDistributionProgress},
+            #{item.spaceAmount},
+            #{item.settlementAmount},
+            #{item.ceoAmount},
+            #{item.stockCostPayable},
+            #{item.increasedCosts},
+            #{item.incrementalAward},
+            #{item.maintenancePerformanceAward},
+            #{item.totalPay})
+        </foreach>
+    </insert>
+
+    <!--查询营服Api信息-->
+    <select id="getServiceApiByServiceName" parameterType="String"
+            resultType="com.gpdi.operatingunit.entity.costreport.Kpi">
+        select * from kpi where service_name like #{param1}
+    </select>
+
+</mapper>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysOrganizationMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysOrganization" id="sysOrganizationMap">
+        <result property="code" column="code"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="name" column="name"/>
+        <result property="parentCode" column="parent_code"/>
+        <result property="fullCode" column="full_code"/>
+        <result property="fullName" column="full_name"/>
+        <result property="level" column="level"/>
+        <result property="seq" column="seq"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="createOper" column="createOper"/>
+        <result property="updateOper" column="updateOper"/>
+        <collection property="childrens" ofType="com.gpdi.operatingunit.entity.system.SysOrgAnizationCamp"
+                    select="getDistrict"
+                    column="code"></collection>
+    </resultMap>
+
+    <!-- 获取角色所属区域 -->
+    <select id="getByTopOrgCodeAndOrgCode" resultMap="sysOrganizationMap">
+        SELECT s2.`code`,s2.top_org_code,s2.`name`,s2.alias,s2.parent_code,s2.full_code,
+        s2.full_name,s2.`level`,s2.seq,s2.`enable`,s2.create_oper_id,s2.create_time,s2.update_oper_id,s2.update_time
+        FROM sys_user s1
+        INNER JOIN sys_organization s2 ON s1.top_org_code = s2.top_org_code AND s1.org_code = s2.`code`
+        AND s1.top_org_code = #{topOrgCode} AND s1.org_code = #{orgCode}
+    </select>
+
+    <!-- 获取角色所属区 -->
+    <select id="getByTopOrgCodeAndOrgCodeCity" resultMap="sysOrganizationMap">
+        SELECT s2.`code`,s2.top_org_code,s2.`name`,s2.alias,s2.parent_code,s2.full_code,
+        s2.full_name,s2.`level`,s2.seq,s2.`enable`,s2.create_oper_id,s2.create_time,s2.update_oper_id,s2.update_time FROM sys_organization s1
+        INNER JOIN sys_organization s2 ON s1.`parent_code` = s2.`code`
+        AND s1.top_org_code = #{topOrgCode} AND s1.`code` = #{orgCode}
+    </select>
+
+    <select id="getOrganization" resultMap="sysOrganizationMap">
+        SELECT `code`,`name`,alias,parent_code,alias,seq FROM `sys_organization` s1 WHERE s1.`level` = #{level} AND parent_code = #{parentCode} ORDER BY seq
+    </select>
+
+    <select id="getDistrict" resultType="com.gpdi.operatingunit.entity.system.SysOrgAnizationCamp">
+        SELECT `code`,`name`,alias FROM `sys_organization` s2 WHERE s2.`parent_code` = #{code} ORDER BY seq
+    </select>
+
+    <select id="getParentCode" resultMap="sysOrganizationMap">
+        SELECT * FROM sys_organization WHERE parent_code = #{orgCode} ORDER BY seq
+    </select>
+
+    <select id="getAllCenter" resultMap="sysOrganizationMap">
+        SELECT * FROM `sys_organization` where full_code like #{topOrgCode} and level = 4 and enable = 1;
+    </select>
+
+    <select id="queryList" resultMap="sysOrganizationMap">
+        select a.*,b.`name` as createOper,c.`name` as updateOper
+        from sys_organization a
+        left join sys_user b on a.create_oper_id = b.id
+        left join sys_user c on a.update_oper_id = c.id
+        where a.top_org_code = #{topOrgCode}
+        order by a.`level`,a.parent_code,a.seq
+    </select>
+
+    <select id="getByCode" resultMap="sysOrganizationMap">
+        select a.*,b.`name` as createOper,c.`name` as updateOper
+        from sys_organization a
+        left join sys_user b on a.create_oper_id = b.id
+        left join sys_user c on a.update_oper_id = c.id
+        where a.code = #{code}
+    </select>
+
+    <update id="updateEnableByCodes">
+        update sys_organization set `enable` = #{enable}, update_time = NOW(), update_oper_id = #{updateOperId}
+        where code in
+        <foreach collection="codes" item="item" index="index" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <select id="getMaxSeqByLevelAndParentCode" resultType="java.lang.Integer">
+        select max(seq) from sys_organization where `level` = #{level} and parent_code = #{parentCode}
+    </select>
+
+    <select id="queryAllChildCodes" resultType="java.lang.Long">
+        select code from (
+        select t1.code,
+        if(find_in_set(parent_code, @pids) > 0, @pids := concat(@pids, ',', code), 0) as ischild
+        from (select code,parent_code from sys_organization t order by parent_code, code) t1,
+        (select @pids := #{code}) t2
+        ) t3 where ischild != 0
+    </select>
+
+    <delete id="deleteByCodes">
+        delete from sys_organization
+        where code in
+        <foreach collection="codes" item="item" index="index" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <select id="getByTopOrgCodeAndParentCode" resultMap="sysOrganizationMap">
+        SELECT * FROM sys_organization WHERE top_org_code = #{topOrgCode} AND parent_code = #{parentCode} ORDER BY seq DESC LIMIT 1
+    </select>
+
+</mapper>

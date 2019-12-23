@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.SysCostItemHandleMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SysCostItemHandle" id="sysCostItemHandleMap">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="fullId" column="full_id"/>
+        <result property="fullName" column="full_name"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="level" column="level"/>
+        <result property="seq" column="seq"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="dataFrom" column="data_from"/>
+        <result property="dataFromDesc" column="data_from_desc"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <update id="updateCountyItemFullName">
+        update sys_cost_item_handle t inner join (select
+        CASE
+        WHEN a.`level` = 1 THEN a.`name`
+        ELSE CONCAT(b.name,'|',a.name)
+        END as full_name,
+        a.id,a.report_id,a.org_code
+        from sys_cost_item_handle a
+        left join sys_cost_item_handle b on a.parent_id = b.id
+        where a.report_id = #{reportId} and a.org_code = #{topOrgCode}) as x
+        set t.full_name = x.full_name
+        where t.id = x.id
+    </update>
+
+
+</mapper>

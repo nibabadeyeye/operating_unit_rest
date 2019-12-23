@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysSapSubjectMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysSapSubject" id="sysSapSubjectMap">
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="getSapSubject" resultMap="sysSapSubjectMap">
+        select b.id as sid,b.report_id,b.org_code,b.year,a.code,a.`name`
+        from sys_sap_subject a
+        join rel_sap_cost_item b on a.code = b.sap_code
+        where b.cost_item_id = #{id} and b.report_id = #{reportId}
+        and b.year = #{year} and b.`enable` = 1 and a.`enable` = 1
+        order by b.id
+    </select>
+
+</mapper>

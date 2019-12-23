@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.RelOrgReportColumnDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.RelOrgReportColumnEntity" id="relOrgReportColumnMap">
+        <result property="id" column="id"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="prop" column="prop"/>
+        <result property="name" column="name"/>
+        <result property="seq" column="seq"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <select id="queryByReportIdAndTopOrgCode" resultMap="relOrgReportColumnMap">
+        SELECT id,top_org_code,report_id,prop,`name`,seq,`status` FROM `rel_org_report_column`
+        WHERE report_id = #{reportId} AND top_org_code = #{topOrgCode} AND `status` = 1 ORDER BY seq
+    </select>
+
+
+</mapper>

@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.SysCostItemMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SysCostItem" id="sysCostItemMap">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="fullId" column="full_id"/>
+        <result property="fullName" column="full_name"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="level" column="level"/>
+        <result property="seq" column="seq"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="dataFrom" column="data_from"/>
+        <result property="dataFromDesc" column="data_from_desc"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="costType" column="costType"/>
+        <result property="length" column="length"/>
+        <result property="handlingDesc" column="handlingDesc"/>
+        <result property="count" column="count"/>
+        <result property="sapCodeAndName" column="sapCodeAndName"/>
+        <collection property="sapSubjectList" ofType="SysSapSubject">
+            <result property="code" column="code"/>
+            <result property="sname" column="sname"/>
+        </collection>
+    </resultMap>
+
+    <!-- 获取化小成本表的费用类别及所属的成本 -->
+    <select id="getSysCostItemList" resultMap="sysCostItemMap">
+        SELECT a.id,a.name,a.org_code,a.report_id,a.`level`,a.seq,a.parent_id,b.name as costType,
+        IFNULL(c.handling_desc,0) as handlingDesc ,e.code,e.sname
+        FROM sys_cost_item a
+        left join sys_cost_item b on a.parent_id = b.id
+        left join (
+            select rs.cost_item_id, SUM(IF(rs.handling_desc is null,0,1)) as handling_desc
+            from rel_sap_cost_item rs where rs.enable = 1 and rs.org_code = #{orgCode} and rs.year = #{year}
+            group by rs.cost_item_id
+        )c on a.id = c.cost_item_id
+        left join(
+            SELECT i.id,i.cost_item_id,s.`code`,s.`name` as sname
+            from rel_sap_cost_item i
+            join sys_sap_subject s on i.sap_code = s.code
+            where i.report_id = #{reportId} and i.org_code = #{orgCode} and i.year = #{year} and s.enable = 1
+            order by i.id
+        ) e on a.id = e.cost_item_id
+        where a.`level` = 2 and a.report_id = #{reportId} and a.org_code = #{orgCode} and a.enable = 1
+        order by  a.level,b.seq,a.seq,e.id;
+    </select>
+
+
+    <!-- 获取区县的费用 -->
+    <select id="getCountyItem" resultMap="sysCostItemMap">
+        SELECT a.id,a.name,a.org_code,a.report_id,a.`level`,a.seq,a.parent_id,
+        IFNULL(c.handling_desc,0) as handlingDesc ,e.code,e.sname,a.remark as costType
+        FROM sys_cost_item a
+        left join (
+            select rs.cost_item_id, SUM(IF(rs.handling_desc is null,0,1)) as handling_desc
+            from rel_sap_cost_item rs where rs.enable = 1 and rs.org_code = #{orgCode} and rs.year = #{year}
+            group by rs.cost_item_id
+        )c on a.id = c.cost_item_id
+        left join(
+            SELECT i.id,i.cost_item_id,s.`code`,s.`name` as sname
+            from rel_sap_cost_item i
+            join sys_sap_subject s on i.sap_code = s.code
+            where i.report_id = #{reportId} and i.org_code = #{orgCode} and i.year = #{year} and i.enable = 1
+            order by i.id
+        ) e on a.id = e.cost_item_id
+        where a.report_id = #{reportId} and a.org_code = #{orgCode} and a.enable = 1
+        order by  a.seq,a.level,e.id;
+    </select>
+
+    <!-- 通过报表id获取费用列表 -->
+    <select id="getCostItemByReportId" resultMap="sysCostItemMap">
+        select a.id,a.name
+        from sys_cost_item a
+        join rel_sap_cost_item b on a.id = b.cost_item_id
+        where a.level = 2 and a.report_id = #{reportId} and a.org_code = #{orgCode} and a.enable =1
+        group by a.name
+    </select>
+
+    <!-- 根据父id查询最大的seq -->
+    <select id="getMaxSeqByParentId" resultType="java.lang.Integer">
+        select max(seq) from sys_cost_item where parent_id = #{parentId}
+    </select>
+
+    <!-- 根据父ID的子项的最大的seq去查找跟父级同级的最小的seq -->
+    <select id="getSeqForCounty" resultType="java.lang.Integer">
+        select min(seq) from sys_cost_item where seq > #{min} and report_id = #{reportId} and org_code = #{orgCode}
+    </select>
+
+    <!-- 根据id查找子级 -->
+    <select id="getChildren" resultMap="sysCostItemMap">
+        select * from (
+        select t1.*,
+        if(find_in_set(parent_id, @pids) > 0, @pids := concat(@pids, ',', id), 0) as ischild
+        from (select * from sys_cost_item t  where enable = 1 and report_id = #{reportId} and org_code = #{orgCode} order by parent_id, id) t1,
+        (select @pids := #{id}) t2
+        ) t3 where ischild != 0
+    </select>
+
+    <!--  根据id获取子级id -->
+    <select id="getIdsByParentId" resultType="java.lang.Integer">
+        select id from sys_cost_item where parent_id = #{id}
+    </select>
+
+
+    <update id="updateSeq">
+        update sys_cost_item set seq = #{sql} where id = #{id}
+    </update>
+
+    <update id="updateParentId">
+         update sys_cost_item set parentId = #{parentId} where id = #{id}
+    </update>
+
+    <insert id="saveCostItem" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.gpdi.operatingunit.entity.reportconfig.SysCostItem">
+        INSERT INTO sys_cost_item(`name`, full_id, full_name, org_code, report_id, `level`,
+        seq, parent_id, data_from, data_from_desc, enable, create_oper_id, create_time, remark)
+        VALUES (#{name}, #{full_id}, #{full_name}, #{org_code}, #{report_id}, #{level},
+        #{seq}, #{parent_id}, #{data_from}, #{data_from_desc}, #{enable}, #{create_oper_id}, #{create_time}, #{remark})
+    </insert>
+
+    <select id="getDeleteIds" resultType="java.lang.Long">
+         select y.id from sys_cost_item y where y.id not in
+        (select b.id
+        from sys_cost_item_handle a
+        join sys_cost_item b on a.full_name = b.full_name and a.report_id = b.report_id
+        where a.report_id = #{reportId} and a.org_code = #{topOrgCode})
+        and y.report_id = #{outerReportId} and y.org_code = #{outerTopOrgCode}
+    </select>
+
+    <select id="selectUpdates" resultMap="sysCostItemMap">
+        select b.id,a.`name`,a.full_name,a.org_code,a.report_id,a.`level`,a.seq,b.parent_id,a.data_from,
+        a.data_from_desc,a.`enable`,a.create_oper_id,a.create_time,a.remark
+        from sys_cost_item_handle a
+        left join sys_cost_item b on a.full_name = b.full_name and a.report_id = b.report_id and a.org_code = b.org_code
+        where a.report_id = #{reportId} and a.org_code = #{topOrgCode} and a.`enable` = 1
+    </select>
+
+    <update id="updateItemsParentId">
+        update sys_cost_item t inner join (select b.`name`,
+        case
+        when a.`level` = 1 then -1
+        else b.id
+        end as parent_id,a.id
+        from sys_cost_item a
+        left join sys_cost_item b on a.full_name = concat(b.`name`,'|',a.`name`)
+        and a.report_id =b.report_id and a.org_code = b.org_code
+        where a.report_id = #{reportId} and a.org_code = #{topOrgCode} and a.parent_id = -10000) as x
+        set t.parent_id = x.parent_id
+        where t.id = x.id
+    </update>
+
+    <update id="updateCountyItemFullName">
+        update sys_cost_item t inner join (select
+        CASE
+        WHEN a.`level` = 1 THEN a.`name`
+        ELSE CONCAT(b.name,'|',a.name)
+        END as full_name,
+        a.id,a.report_id,a.org_code
+        from sys_cost_item a
+        left join sys_cost_item b on a.parent_id = b.id
+        where a.report_id = #{reportId} and a.org_code = #{topOrgCode}) as x
+        set t.full_name = x.full_name
+        where t.id = x.id
+    </update>
+
+
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SysCostItem" id="sysCostItemMaps">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="cname" column="cname"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="level" column="level"/>
+        <result property="seq" column="seq"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="dataFrom" column="data_from"/>
+        <result property="dataFromDesc" column="data_from_desc"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="currMonthValue" column="curr_month_value"/>
+        <collection property="itemsChildrens" resultMap="rsCostReportMap">
+        </collection>
+    </resultMap>
+
+
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.RsCostReportEntity" id="rsCostReportMap">
+        <result property="id" column="id"/>
+        <result property="reportId" column="report_id"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="parentOrgCode" column="parent_org_code"/>
+        <result property="month" column="month"/>
+        <result property="budget" column="budget"/>
+        <result property="currMonthValue" column="curr_month_value"/>
+        <result property="lastMonthValue" column="last_month_value"/>
+        <result property="diffLastMonth" column="diff_last_month"/>
+        <result property="percLastMonth" column="perc_last_month"/>
+        <result property="currYearValue" column="curr_year_value"/>
+        <result property="lastYearValue" column="last_year_value"/>
+        <result property="diffLastYear" column="diff_last_year"/>
+        <result property="percLastYear" column="perc_last_year"/>
+        <result property="progress" column="progress"/>
+        <result property="remainingBudget" column="remaining_budget"/>
+    </resultMap>
+
+    <select id="getCostItem" resultMap="sysCostItemMaps">
+        SELECT s2.id,s1.`name`,s2.`name` AS cname,s2.seq,s2.org_code,s2.report_id FROM `sys_cost_item` s1
+        INNER JOIN `sys_cost_item` s2 ON s1.id = s2.parent_id AND s1.`report_id` = #{reportId} AND s2.org_code = -1
+    </select>
+
+    <select id="getCostItemName" resultMap="sysCostItemMaps">
+
+        SELECT a.id,a.`name` FROM sys_cost_item a WHERE a.parent_id = #{parentId}
+        AND a.org_code = #{orgCode} AND report_id = #{reportId} GROUP BY `name` ORDER BY seq
+    </select>
+
+    <select id="getCostItemMenu" resultMap="sysCostItemMaps">
+        SELECT s2.id,s1.`name`,s2.`name` AS cname,s2.seq,s2.org_code,s2.report_id FROM `sys_cost_item` s1
+        INNER JOIN `sys_cost_item` s2 ON s1.id = s2.parent_id AND s1.`report_id` = #{reportId}
+        AND s1.`name` = #{name} AND s2.org_code = #{orgCode}
+        GROUP BY s2.`name`
+        ORDER BY seq
+    </select>
+
+    <!--  查询分类下的子项有多少  -->
+    <select id="getByOrgCodeAndReportIdColumn" resultMap="sysCostItemMap">
+        SELECT a.id,a.`name`,COUNT(a.id) AS count FROM sys_cost_item a
+        INNER JOIN sys_cost_item b ON a.id = b.parent_id
+        AND a.parent_id = -1 AND a.org_code = #{topOrgCode} AND a.report_id = #{reportId}
+        GROUP BY a.id
+        ORDER BY a.seq
+    </select>
+
+
+
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SysCostItem" id="sysCostItemCostReportMap">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="fullId" column="full_id"/>
+        <result property="fullName" column="full_name"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="level" column="level"/>
+        <result property="seq" column="seq"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="dataFrom" column="data_from"/>
+        <result property="dataFromDesc" column="data_from_desc"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="costType" column="costType"/>
+        <result property="length" column="length"/>
+        <result property="handlingDesc" column="handlingDesc"/>
+        <result property="count" column="count"/>
+        <result property="sapCodeAndName" column="sapCodeAndName"/>
+        <collection property="itemsChildrens" ofType="RsCostReportEntity">
+            <id property="id" column="id"/>
+            <result property="reportId" column="report_id"/>
+            <result property="orgCode" column="org_code"/>
+            <result property="parentOrgCode" column="parent_org_code"/>
+            <result property="month" column="month"/>
+            <result property="budget" column="budget"/>
+            <result property="currMonthValue" column="curr_month_value"/>
+            <result property="lastMonthValue" column="last_month_value"/>
+            <result property="diffLastMonth" column="diff_last_month"/>
+            <result property="percLastMonth" column="perc_last_month"/>
+            <result property="currYearValue" column="curr_year_value"/>
+            <result property="lastYearValue" column="last_year_value"/>
+            <result property="diffLastYear" column="diff_last_year"/>
+            <result property="percLastYear" column="perc_last_year"/>
+            <result property="progress" column="progress"/>
+            <result property="remainingBudget" column="remaining_budget"/>
+        </collection>
+    </resultMap>
+
+    <!--  获取区县成本数据  -->
+    <select id="getOrganizationByOrgCode" resultMap="sysCostItemCostReportMap">
+        SELECT a.id,a.name,a.org_code,a.report_id,a.`level`,a.seq,a.parent_id,
+        IFNULL(c.handling_desc,0) as handlingDesc ,e.code,e.sname,a.remark as costType
+        ,r1.id,r1.report_id,r1.org_code,r1.parent_org_code,r1.top_org_code,r1.`month`,r1.cost_item_id,r1.budget,
+        r1.curr_month_value,r1.last_month_value,
+        r1.diff_last_month,r1.perc_last_month,
+        r1.curr_year_value,r1.last_year_value,
+        r1.diff_last_year,perc_last_year,r1.progress,
+        r1.remaining_budget
+        FROM sys_cost_item a
+        left join (
+                select rs.cost_item_id, COUNT(rs.handling_desc) as handling_desc
+                from rel_sap_cost_item rs where rs.enable = 1 and rs.org_code = #{parentOrgCode} and rs.year = #{year}
+                group by rs.handling_desc
+        )c on a.id = c.cost_item_id
+        left join(
+                SELECT i.id,i.cost_item_id,s.`code`,s.`name` as sname
+                from rel_sap_cost_item i
+                join sys_sap_subject s on i.sap_code = s.code
+                where i.report_id = #{reportId} and i.org_code = #{parentOrgCode} and i.year = #{year} and i.enable = 1
+                order by i.id
+        ) e on a.id = e.cost_item_id
+        LEFT JOIN rs_cost_report r1 ON r1.cost_item_id = a.id AND r1.report_id = #{reportId} AND r1.org_code = #{orgCode} AND r1.`month` = #{month}
+        WHERE a.report_id = #{reportId} and a.org_code = #{parentOrgCode} and a.enable = 1
+        order by  a.seq,a.level,e.id
+    </select>
+
+
+    <select id="getOrganizationByOrgCodeData" resultMap="rsCostReportMap">
+        SELECT a.id,r1.report_id,r1.org_code,r1.parent_org_code,r1.top_org_code,r1.`month`,r1.budget,
+        r1.curr_month_value,r1.last_month_value,
+        r1.diff_last_month,r1.perc_last_month,
+        r1.curr_year_value,r1.last_year_value,
+        r1.diff_last_year,perc_last_year,r1.progress,
+        r1.remaining_budget
+        FROM sys_cost_item a
+        left join (
+                select rs.cost_item_id, COUNT(rs.handling_desc) as handling_desc
+                from rel_sap_cost_item rs where rs.enable = 1 and rs.org_code = #{parentOrgCode} and rs.year = #{year}
+                group by rs.handling_desc
+        )c on a.id = c.cost_item_id
+        left join(
+                SELECT i.id,i.cost_item_id,s.`code`,s.`name` as sname
+                from rel_sap_cost_item i
+                join sys_sap_subject s on i.sap_code = s.code
+                where i.report_id = #{reportId} and i.org_code = #{parentOrgCode} and i.year = #{year} and i.enable = 1
+                order by i.id
+        ) e on a.id = e.cost_item_id
+        LEFT JOIN rs_cost_report r1 ON r1.cost_item_id = a.id AND r1.report_id = #{reportId} AND r1.org_code = #{orgCode} AND r1.`month` = #{month}
+        WHERE a.report_id = #{reportId} and a.org_code = #{parentOrgCode} and a.enable = 1
+        GROUP BY a.id
+        order by  a.seq,a.level,e.id
+    </select>
+
+    <select id="getCostItemDatas" resultMap="rsCostReportMap">
+        SELECT
+        id,report_id,org_code,parent_org_code,top_org_code,`month`,cost_item_id,budget,
+        curr_month_value,last_month_value,
+        diff_last_month,perc_last_month,
+        curr_year_value,last_year_value,
+        diff_last_year,perc_last_year,progress,
+        remaining_budget
+        FROM rs_cost_report WHERE report_id = #{reportId} AND org_code = #{orgCode} AND `month` BETWEEN #{month} AND #{endMonth} AND cost_item_id = #{costItemId}
+    </select>
+
+
+    <!-- 预算 -->
+    <select id="getBudget" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,a.cost_item_id,SUM(a.budget) as budget
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{fromMonth}
+        </if>
+        GROUP BY a.org_code,a.cost_item_id
+    </select>
+
+
+
+
+
+    <select id="getCountyCostItemDatas" resultMap="rsCostReportMap">
+        SELECT
+        id,report_id,org_code,parent_org_code,top_org_code,`month`,cost_item_id,budget,
+        curr_month_value,last_month_value,
+        diff_last_month,perc_last_month,
+        curr_year_value,last_year_value,
+        diff_last_year,perc_last_year,progress,
+        remaining_budget
+        FROM rs_cost_report WHERE report_id = #{reportId} AND org_code = #{orgCode} AND `month` BETWEEN #{month} AND #{endMonth} AND cost_item_id = #{costItemId}
+    </select>
+
+    <select id="getBudgetOrProgress" resultMap="rsCostReportMap">
+        SELECT
+        SUM(budget) AS budget,SUM(progress) AS progress,SUM(curr_month_value) AS curr_month_value
+        FROM rs_cost_report WHERE report_id = #{reportId} AND org_code IN (
+        <foreach collection="list" item="emp" separator=",">
+            #{emp.code}
+        </foreach>
+        ) AND `month` BETWEEN #{beginMonth} AND #{endMonth} AND cost_item_id = #{costItemId}
+    </select>
+
+    <select id="getCostItemCountDatas" resultMap="rsCostReportMap">
+        SELECT
+        id,report_id,org_code,parent_org_code,top_org_code,`month`,cost_item_id,budget,
+        curr_month_value,last_month_value,
+        diff_last_month,perc_last_month,
+        curr_year_value,last_year_value,
+        diff_last_year,perc_last_year,progress,
+        remaining_budget
+        FROM rs_cost_report WHERE report_id = #{reportId} AND org_code = #{orgCode} AND `month` = #{month} AND cost_item_id = #{costItemId}
+    </select>
+
+    <!--<select id="getCostItemCountyData" resultMap="sysCostItemMaps">
+        SELECT s2.id,s1.`name`,s2.`name` AS cname,s2.seq,s2.org_code,s2.report_id,
+        r1.id,r1.report_id,r1.org_code,r1.parent_org_code,r1.`month`,r1.budget,
+        r1.curr_month_value,r1.last_month_value,r1.diff_last_month,r1.perc_last_month,r1.curr_year_value,r1.last_year_value,
+        r1.diff_last_year,r1.perc_last_year,r1.progress,r1.remaining_budget
+        FROM `sys_cost_item` s1
+        INNER JOIN `sys_cost_item` s2 ON s1.id = s2.parent_id AND s1.`report_id` = #{reportId}
+        INNER JOIN rs_cost_report r1 ON r1.cost_item_id = s2.id AND r1.parent_org_code = #{orgCode} AND r1.`month` = #{month}
+    </select>-->
+
+    <select id="getCostItemCountyData" resultMap="rsCostReportMap">
+        SELECT * FROM rs_cost_report r1 WHERE r1.cost_item_id = #{id} AND r1.parent_org_code = #{orgCode} AND r1.`month` = #{month}
+    </select>
+
+    <select id="queryTitleSettingData" resultType="java.util.Map">
+        select * from rel_org_report_column where report_id = #{reportId} order by `status` desc,seq asc
+    </select>
+
+    <select id="queryTreeEnableData" resultType="java.util.Map">
+       select * from rel_org_report_column where report_id = #{reportId} and `status` = 1
+    </select>
+
+</mapper>

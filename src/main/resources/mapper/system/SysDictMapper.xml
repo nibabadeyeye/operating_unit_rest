@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysDictMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysDict" id="sysDictMap">
+        <result property="id" column="id"/>
+        <result property="cat" column="cat"/>
+        <result property="text" column="text"/>
+        <result property="value" column="value"/>
+        <result property="seq" column="seq"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="getSelections" resultMap="sysDictMap">
+        select text,value from sys_dict where cat = 'rel_sap_cost_item_subitem.operation' order by seq;
+    </select>
+
+    <select id="queryByCat" resultMap="sysDictMap">
+        select text,value,remark from sys_dict where cat = #{cat} order by seq;
+    </select>
+
+</mapper>

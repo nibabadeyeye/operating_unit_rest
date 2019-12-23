@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.RelSapCostItemMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.RelSapCostItem" id="relSapCostItemMap">
+        <result property="id" column="id"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="year" column="year"/>
+        <result property="sapCode" column="sap_code"/>
+        <result property="reportId" column="report_id"/>
+        <result property="costItemId" column="cost_item_id"/>
+        <result property="costItem" column="cost_item"/>
+        <result property="handlingDesc" column="handling_desc"/>
+        <result property="operation" column="operation"/>
+        <result property="enable" column="enable"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="sid" column="sid"/>
+        <collection property="subitemList" ofType="RelSapCostItemSubitem">
+            <result property="parentId" column="parent_id" />
+            <result property="fieldName" column="field_name"/>
+            <result property="fieldNameDesc" column="field_name_desc"/>
+            <result property="operations" column="operations"/>
+            <result property="operationDesc" column="operation_desc"/>
+            <result property="params" column="params"/>
+        </collection>
+    </resultMap>
+
+    <update id="relConfig">
+        update rel_sap_cost_item r
+        INNER JOIN  (select id,name,org_code from sys_cost_item
+        where report_id = #{reportId} and org_code = #{topOrgCode}) a
+        set r.cost_item_id = a.id
+        where r.cost_item = a.name and r.org_code = a.org_code
+        and r.report_id = #{reportId} and r.org_code = #{topOrgCode} and r.`year` = #{year}
+    </update>
+
+    <delete id="deleteItem">
+        delete from rel_sap_cost_item where id = #{sid}
+    </delete>
+
+    <select id="getSubitemByItemId" resultMap="relSapCostItemMap">
+        select x.cost_item,x.sap_code,x.cost_item_id,y.field_name,y.field_name_desc,
+        y.operation as operations,y.operation_desc,y.params
+        from rel_sap_cost_item x
+        left join rel_sap_cost_item_subitem y on x.id = y.parent_id
+        where y.parent_id is not null and x.report_id = #{reportId} and x.cost_item_id != 0
+        and x.org_code = #{orgCode} and x.enable = 1 and x.year = #{year}
+    </select>
+
+    <select id="getCountySubitemByItemId" resultMap="relSapCostItemMap">
+        select x.cost_item,x.sap_code,x.cost_item_id,y.field_name,y.field_name_desc,
+        y.operation as operations,y.operation_desc,y.params
+        from rel_sap_cost_item x
+        left join rel_sap_cost_item_subitem y on x.id = y.parent_id
+        where y.parent_id is not null and x.report_id = #{reportId} and x.cost_item_id != 0
+        and x.org_code = #{orgCode} and x.enable = 1 and x.year = #{year}
+        and x.cost_item_id  in (select id from sys_cost_item where id not in (select distinct parent_id from sys_cost_item
+        where org_code = #{orgCode} and report_id = #{reportId})
+        and org_code = #{orgCode} and report_id = #{reportId})
+    </select>
+
+    <select id="getSubitemByItem" resultMap="relSapCostItemMap">
+        select x.cost_item,x.sap_code,x.cost_item_id,y.field_name,y.field_name_desc,
+        y.operation as operations,y.operation_desc,y.params
+        from rel_sap_cost_item x
+        left join rel_sap_cost_item_subitem y on x.id = y.parent_id
+        where y.parent_id is not null and x.report_id = #{reportId} and x.cost_item_id = #{itemId}
+        and x.org_code = #{topOrgCode} and x.enable = 1 and x.year = #{endYear};
+    </select>
+
+    <update id="updateByItemId">
+        update rel_sap_cost_item set cost_item = #{costItem} where cost_item_id = #{costItemId}
+    </update>
+
+    <select id="getIdsByCostItemId" resultType="java.lang.Integer">
+        select id from rel_sap_cost_item where cost_item_id in
+        <foreach item="item" index="index" collection="list" open=" (" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.SimpleProfitsReportMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SimpleProfitsReportEntity" id="tSimpleProfitsReportMap">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="createOperUserName" column="create_oper_user_name"/>
+    </resultMap>
+
+    <!-- 查看可给用户显示的数据（分页显示） -->
+    <!--SELECT * FROM t_simple_profits_report WHERE top_org_code = #{topOrgCode} LIMIT #{pageNumber},#{pageSize}-->
+    <!--
+    SELECT t1.id,t1.name,t1.create_oper_id,t1.create_time,t1.update_oper_id,t1.update_time,t1.top_org_code,s1.username FROM t_simple_profits_report t1
+            INNER JOIN sys_user s1 ON s1.id = t1.create_oper_id
+            AND t1.top_org_code = #{topOrgCode} LIMIT #{pageNumber},#{pageSize}
+    -->
+    <select id="findByTopOrgCode" resultMap="tSimpleProfitsReportMap">
+        SELECT t1.id,t1.`name`,t1.create_oper_id,t1.create_time,t1.update_oper_id,t1.update_time,t1.top_org_code,t1.create_oper_user_name FROM t_simple_profits_report t1
+        WHERE t1.top_org_code = #{topOrgCode} LIMIT #{pageNumber},#{pageSize}
+    </select>
+
+    <!-- 查看总数据 -->
+    <select id="findByTopOrgCodeCount" resultMap="tSimpleProfitsReportMap">
+        SELECT * FROM t_simple_profits_report WHERE top_org_code = #{topOrgCode}
+    </select>
+
+    <!-- 数据删除 -->
+    <delete id="delSimpleProfitsReportAndId">
+        DELETE FROM t_simple_profits_report WHERE id IN
+        (<foreach collection="list" item="emp" separator=",">
+            #{emp.id}
+        </foreach>
+        )
+    </delete>
+
+
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SimpleProfitEntity" id="tSimpleProfitMap">
+        <result property="id" column="id"/>
+        <result property="coding" column="coding"/>
+        <result property="name" column="name"/>
+        <result property="childNode" column="child_node"/>
+        <result property="seq" column="seq"/>
+    </resultMap>
+
+    <!-- 获取需要展示的行 -->
+    <select id="findSimpleProfitAll" resultMap="tSimpleProfitMap">
+        SELECT t1.id,t1.coding,t1.`name`,t1.child_node,t1.seq,t2.`name` as chilName FROM t_simple_profit t1
+        INNER JOIN t_simple_profit t2 ON t1.child_node = t2.id
+    </select>
+
+
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.SimpleProfitReportDetailsEntity" id="tSimpleProfitReportDetailsMap">
+        <result property="id" column="id"/>
+        <result property="coding" column="coding"/>
+        <result property="simpleProfitsReportId" column="simple_profits_report_id"/>
+        <result property="monthlyAverageIntoNetwork" column="monthly_average_into_network"/>
+        <result property="arpu" column="arpu"/>
+        <result property="retentionRate" column="retention_rate"/>
+        <result property="numberOfPersonnel" column="number_of_personnel"/>
+        <result property="averageMonthlySalary" column="average_monthly_salary"/>
+        <result property="area" column="area"/>
+        <result property="unitPriceOfRent" column="unit_price_of_rent"/>
+        <result property="userId" column="user_id"/>
+    </resultMap>
+    <!-- 获取详细数据 -->
+    <select id="findByTopOrgCodeAndId" resultMap="tSimpleProfitReportDetailsMap">
+        SELECT t2.* FROM t_simple_profits_report t1
+        INNER JOIN t_simple_profit_report_details t2 ON t1.id = t2.simple_profits_report_id
+        AND t1.top_org_code = #{topOrgCode} AND t1.id = #{id}
+    </select>
+
+    <!-- 数据添加 -->
+    <insert id="insertSimpleProfitReportDetails">
+        INSERT INTO `t_simple_profit_report_details`
+        (`coding`, `simple_profits_report_id`, `monthly_average_into_network`, `arpu`, `retention_rate`,
+        `number_of_personnel`, `average_monthly_salary`, `area`, `unit_price_of_rent`, `user_id`)
+        VALUES
+        <foreach collection="list" item="emp" separator=",">
+            (#{emp.coding},#{emp.simpleProfitsReportId},#{emp.monthlyAverageIntoNetwork},#{emp.arpu},#{emp.retentionRate},
+            #{emp.numberOfPersonnel},#{emp.averageMonthlySalary},#{emp.area},#{emp.unitPriceOfRent},#{emp.userId})
+        </foreach>
+    </insert>
+
+    <!-- 数据添加 -->
+    <insert id="insertTimpleProfitsReport" useGeneratedKeys="true" keyProperty="id"  keyColumn="id">
+        INSERT INTO `t_simple_profits_report`
+        (`name`, `create_oper_id`, `create_time`, `update_oper_id`, `update_time`, `top_org_code`, `create_oper_user_name`)
+        VALUES
+        (#{emp.name},#{emp.createOperId},#{emp.createTime},#{emp.updateOperId},#{emp.updateTime},#{emp.topOrgCode},#{emp.createOperUserName})
+    </insert>
+
+</mapper>

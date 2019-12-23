@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysSapAccountMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysSapAccount" id="sysSapAccountMap">
+        <result property="id" column="id"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="account" column="account"/>
+        <result property="password" column="password"/>
+        <result property="createId" column="create_id"/>
+        <result property="businessType" column="business_type" />
+        <result property="accountType" column="account_type" />
+        <result property="createTime" column="create_time"/>
+        <result property="updateId" column="update_id"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="getAccountList" resultMap="sysSapAccountMap">
+        select x.id,x.top_org_code,y.alias as city,x.account,x.account_type,x.create_time,x.update_time
+        FROM sys_sap_account x
+        left join sys_organization y on x.top_org_code = y.code
+        where x.top_org_code = #{topOrgCode}
+        <if test=" type != null and type != ''">
+            and x.account_type = #{type}
+        </if>
+    </select>
+
+</mapper>

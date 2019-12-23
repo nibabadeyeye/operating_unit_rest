@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysReportColumnMapper">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysReportColumn" id="sysReportColumnMap">
+        <result property="id" column="id"/>
+        <result property="reportId" column="report_id"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="level" column="level"/>
+        <result property="name" column="name"/>
+        <result property="prop" column="prop"/>
+        <result property="dataType" column="data_type"/>
+        <result property="dataFrom" column="data_from"/>
+        <result property="uom" column="uom"/>
+        <result property="rowspan" column="rowspan"/>
+        <result property="colspan" column="colspan"/>
+        <result property="movable" column="movable"/>
+        <result property="enabled" column="enabled"/>
+        <result property="editable" column="editable"/>
+        <result property="seq" column="seq"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+</mapper>

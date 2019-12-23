@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.reportconfig.RsCostReportDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.reportconfig.RsCostReportEntity" id="rsCostReportMap">
+        <result property="id" column="id"/>
+        <result property="reportId" column="report_id"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="parentOrgCode" column="parent_org_code"/>
+        <result property="topOrgCode" column="top_org_code"/>
+        <result property="month" column="month"/>
+        <result property="budget" column="budget"/>
+        <result property="costItemId" column="cost_item_id"/>
+        <result property="currMonthValue" column="curr_month_value"/>
+        <result property="lastMonthValue" column="last_month_value"/>
+        <result property="diffLastMonth" column="diff_last_month"/>
+        <result property="percLastMonth" column="perc_last_month"/>
+        <result property="currYearValue" column="curr_year_value"/>
+        <result property="lastYearValue" column="last_year_value"/>
+        <result property="diffLastYear" column="diff_last_year"/>
+        <result property="percLastYear" column="perc_last_year"/>
+        <result property="progress" column="progress"/>
+        <result property="remainingBudget" column="remaining_budget"/>
+    </resultMap>
+
+    <select id="getCostReportTime" resultMap="rsCostReportMap">
+        SELECT `month` FROM rs_cost_report WHERE org_code = #{code} AND report_id = #{reportId}
+        GROUP BY `month`
+    </select>
+
+
+    <!--获取没有特殊条件的费用的本月数-->
+    <select id="getCurrentMonthValue1" resultMap="rsCostReportMap">
+            select #{reportId} as report_id,#{topOrgCode} as top_org_code,(e.year * 100)+e.per as month,
+            0 as budget,SUM(e.currency_value) as curr_month_value,b.org_code,c.parent_code as parent_org_code,
+            a.cost_item_id,a.sap_code,a.cost_item
+            from (
+                select x.cost_item,x.sap_code,x.cost_item_id
+                from rel_sap_cost_item x
+                left join rel_sap_cost_item_subitem y on x.id = y.parent_id
+                where y.parent_id is null and x.report_id = #{reportId} and x.cost_item_id != 0
+                and x.org_code = #{topOrgCode} and x.enable = 1
+            ) a
+            left join data_sap_list e on e.cost_element = a.sap_code
+            join sys_cost_center b on e.cost_center = b.`code`
+            join sys_organization c on b.org_code = c.`code`
+            where e.year = #{year} and e.per = #{per} and e.org_code = #{topOrgCode} and b.top_org_code = #{topOrgCode} and c.`level` > 2
+            GROUP BY b.org_code,a.cost_item_id
+    </select>
+
+    <!-- 获取有特殊条件的本月数 -->
+    <select id="getCurrentMonthValue2" resultMap="rsCostReportMap">
+        SELECT #{reportId} as report_id,#{topOrgCode} as top_org_code,(a.year * 100)+a.per as month,
+        0 as budget,sum(a.currency_value) as curr_month_value,b.org_code,c.parent_code as parent_org_code,
+        #{costItemId} as cost_item_id
+        FROM `data_sap_list` a
+        join sys_cost_center b on a.cost_center = b.code
+        join sys_organization c on b.org_code = c.code
+        where a.year = #{year} and a.per = #{per} and a.org_code = #{topOrgCode} and b.top_org_code = #{topOrgCode} and  c.`level` > 2
+        and ${params}
+        GROUP BY b.org_code;
+    </select>
+
+    <!-- 获取各个区的本月数 -->
+    <select id="getCurrentMonthValue3" resultMap="rsCostReportMap">
+        SELECT a.id,a.report_id,a.parent_org_code as org_code,a.parent_org_code,a.top_org_code,a.`month`,a.cost_item_id,
+        sum(a.budget) as budget,sum(a.curr_month_value) as curr_month_value
+        from rs_cost_report a
+        where a.top_org_code = #{topOrgCode} and a.month = #{month} and a.report_id = #{reportId}
+        group by a.parent_org_code,a.cost_item_id;
+    </select>
+
+
+    <select id="getCountyCurrentMonthValue1" resultMap="rsCostReportMap">
+        select #{reportId} as report_id,#{topOrgCode} as top_org_code,(e.year * 100)+e.per as month,
+            0 as budget,SUM(e.currency_value) as curr_month_value,b.org_code,c.parent_code as parent_org_code,
+            a.cost_item_id,a.sap_code,a.cost_item
+            from (
+                select x.cost_item,x.sap_code,x.cost_item_id
+                from rel_sap_cost_item x
+                left join rel_sap_cost_item_subitem y on x.id = y.parent_id
+                where y.parent_id is null and x.report_id = #{reportId} and x.cost_item_id != 0
+                and x.org_code = #{topOrgCode} and x.enable = 1 and x.cost_item_id in(
+                select j.id from sys_cost_item j where id not in
+                    (select DISTINCT k.parent_id from sys_cost_item k where k.org_code = #{topOrgCode} and k.report_id = #{reportId})
+                and j.org_code = #{topOrgCode} and j.report_id = #{reportId}
+                )
+            ) a
+            left join data_sap_list e on e.cost_element = a.sap_code
+            join sys_cost_center b on e.cost_center = b.`code`
+            join sys_organization c on b.org_code = c.`code`
+            where e.year = #{year} and e.per = #{per} and e.org_code = #{topOrgCode} and b.top_org_code = #{topOrgCode} and c.`level` > 2
+            GROUP BY b.org_code,a.cost_item_id
+    </select>
+
+    <!-- 将本月数插入到数据库 -->
+    <insert id="insertByList" parameterType="java.util.List">
+        insert into rs_cost_report( report_id,org_code,parent_org_code,
+          top_org_code,month,cost_item_id,budget,curr_month_value )VALUES
+            <foreach collection="list" item="item" index="index" separator=",">
+                (
+                    #{item.reportId},#{item.orgCode},#{item.parentOrgCode},
+                    #{item.topOrgCode},#{item.month},#{item.costItemId},#{item.budget},#{item.currMonthValue}
+                )
+            </foreach>
+    </insert>
+
+    <!-- 将当前月所有的本月数等值都查询出来 -->
+    <select id="selectReportList" resultMap="rsCostReportMap">
+        SELECT a.id,a.report_id,a.org_code,a.parent_org_code,a.top_org_code,a.`month`,a.cost_item_id,
+        a.budget,a.curr_month_value,IFNULL(a.last_month_value,0) as last_month_value,
+        IFNULL(a.curr_year_value,0) as curr_year_value,IFNULL(a.last_year_value,0) as last_year_value
+        from rs_cost_report a
+        where a.top_org_code = #{topOrgCode} and a.month = #{month} and a.report_id = #{reportId}
+    </select>
+
+    <!-- 获取上月数 -->
+    <select id="getLastMonthValue" resultMap="rsCostReportMap">
+        select a.report_id,a.org_code,a.parent_org_code,a.top_org_code,
+        a.month,a.cost_item_id,a.curr_month_value as last_month_value
+        from rs_cost_report a
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and month = #{month};
+    </select>
+
+    <!-- 获取年累计数 -->
+    <select id="getYearValue" resultMap="rsCostReportMap">
+        select a.report_id,a.org_code,a.parent_org_code,a.top_org_code,a.month,a.cost_item_id,
+        sum(a.curr_month_value) as curr_year_value
+        from rs_cost_report a
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode}
+        <if test="start != null and start != ''">
+            and a.month <![CDATA[ >= ]]> #{start}
+        </if>
+        <if test="end !=null and end != ''">
+            and a.month <![CDATA[ <= ]]> #{end}
+        </if>
+        group by parent_org_code,org_code,cost_item_id
+    </select>
+
+    <!-- 获取市报表数据 -->
+    <select id="getCityValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,a.cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{fromMonth}
+        </if>
+        GROUP BY a.org_code,a.cost_item_id
+    </select>
+
+    <!-- 获取市报表成本合计数据 -->
+    <select id="getCityCountValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,c.id as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{fromMonth}
+        </if>
+        GROUP BY a.org_code,c.id
+    </select>
+
+    <!--获取市报表全部合计数据-->
+    <select id="getAllCountValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,-1 as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{fromMonth}
+        </if>
+        GROUP BY a.org_code
+    </select>
+
+    <!-- 获取最大月份 -->
+    <select id="getMaxMonth" resultType="java.lang.Integer">
+        select max(month) from rs_cost_report where report_id = #{reportId} and top_org_code = #{topOrgCode}
+    </select>
+
+    <!-- 获取最小月份 -->
+    <select id="getMinMonth" resultType="java.lang.Integer">
+        select min(month) from rs_cost_report where report_id = #{reportId} and top_org_code = #{topOrgCode} and month like #{mon}
+    </select>
+
+    <!-- 删除对应月份的数据 -->
+    <delete id="deleteByMonth">
+        delete from rs_cost_report where month = #{month} and top_org_code = #{topOrgCode} and report_id = #{reportId}
+    </delete>
+
+
+
+    <!-- 区成本数据 -->
+    <select id="getCountyValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,a.cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.org_code,a.cost_item_id
+    </select>
+
+    <!-- 区成本分类合计数据 -->
+    <select id="getCountyCountValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,c.id as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.org_code,c.id
+    </select>
+
+    <!-- 区成本总合计 -->
+    <select id="getAllCountyCountValue" resultMap="rsCostReportMap">
+        select a.org_code,a.parent_org_code,-1 as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.org_code
+    </select>
+
+    <!-- 营服数据 -->
+    <select id="getCountyCostReportValue" resultMap="rsCostReportMap">
+        select -1 as org_code, -1 as parent_org_code,a.cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode} AND a.org_code != #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.cost_item_id
+    </select>
+
+    <!-- 营服分类合计数据 -->
+    <select id="getCountyCostReportCountValue" resultMap="rsCostReportMap">
+        select -1 as org_code, -1 as parent_org_code,c.id as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode}  AND a.org_code != #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY c.id
+    </select>
+
+    <!-- 营服总合计 -->
+    <select id="getAllCountyCostReportCountValue" resultMap="rsCostReportMap">
+        select -1 as org_code, -1 as parent_org_code,c.id as cost_item_id,SUM(a.curr_month_value) as curr_month_value
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode}  AND a.org_code != #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+    </select>
+
+    <!-- 区划小进度数据 -->
+    <select id="getCountyProgressValue" resultMap="rsCostReportMap">
+        select -2 as org_code, -2 as parent_org_code,a.cost_item_id,SUM(a.progress) as progress
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode} AND a.org_code != #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.cost_item_id
+    </select>
+
+    <!-- 区划小进度分类合计 -->
+    <select id="getCountyProgressCountValue" resultMap="rsCostReportMap">
+        select -2 as org_code, -2 as parent_org_code,a.cost_item_id,SUM(a.progress) as progress
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode} AND a.org_code != #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.cost_item_id
+    </select>
+
+    <!-- 区划小进度总合计 -->
+    <select id="getAllCountyProgressCountValue" resultMap="rsCostReportMap">
+        select -2 as org_code, -2 as parent_org_code,c.id as cost_item_id,SUM(a.progress) as progress
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode}  AND a.org_code != #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+    </select>
+
+    <!-- 区划小预算数据 -->
+    <select id="getCountyBudgetValue" resultMap="rsCostReportMap">
+        select -3 as org_code, -3 as parent_org_code,a.cost_item_id,SUM(a.budget) as budget
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode} AND a.org_code != #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.cost_item_id
+    </select>
+
+    <!-- 区划小预算分类合计 -->
+    <select id="getCountyBudgetCountValue" resultMap="rsCostReportMap">
+        select -3 as org_code, -3 as parent_org_code,a.cost_item_id,SUM(a.budget) as budget
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode} AND a.org_code != #{parentOrgCode}
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+        GROUP BY a.cost_item_id
+    </select>
+
+    <!-- 区划小预算总合计 -->
+    <select id="getAllCountyBudgetCountValue" resultMap="rsCostReportMap">
+        select -3 as org_code, -3 as parent_org_code,c.id as cost_item_id,SUM(a.budget) as budget
+        from  rs_cost_report a
+        join sys_cost_item b on a.cost_item_id = b.id
+        join sys_cost_item c on b.parent_id = c.id
+        where a.report_id = #{reportId} and a.top_org_code = #{topOrgCode} and a.org_code  != -1
+        and  b.report_id = #{reportId} and b.org_code = #{topOrgCode} and b.`enable` = 1
+        AND a.parent_org_code = #{parentOrgCode} AND a.org_code != #{orgCode}  AND a.org_code != #{parentOrgCode}
+        <if test=" fromMonth != null and fromMonth != '' ">
+            and a.month <![CDATA[ >= ]]> #{fromMonth}
+        </if>
+        <if test=" toMonth != null and toMonth != '' ">
+            and a.month <![CDATA[ <= ]]> #{toMonth}
+        </if>
+    </select>
+
+
+</mapper>

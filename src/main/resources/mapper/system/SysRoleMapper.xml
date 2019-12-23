@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gpdi.operatingunit.dao.system.SysRoleMapper">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.gpdi.operatingunit.entity.system.SysRole" id="sysRoleMap">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="orgCode" column="rg_code"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="level" column="level"/>
+        <result property="enable" column="enable"/>
+        <result property="intro" column="intro"/>
+        <result property="createOperId" column="create_oper_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateOperId" column="update_oper_id"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="queryById" resultMap="sysRoleMap">
+        SELECT
+        s2.id,s2.`name`,s2.top_org_code,s2.parent_id,
+        s2.`level`,s2.`enable`,s2.intro,s2.create_oper_id,
+        s2.create_time,s2.update_oper_id,s2.update_time
+        FROM sys_user s1
+        INNER JOIN rel_user_role r1 ON s1.id = r1.user_id
+        INNER JOIN sys_role s2 ON s2.id = r1.role_id AND s1.id = #{userId}
+    </select>
+</mapper>
